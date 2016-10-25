@@ -1,0 +1,46 @@
+# This is a record of the commands used to checkout, build, and install
+# TensorFlow and its dependencies on a Debain Linux system.
+# Occasional commentary reflecting the in-the-wild user experience has
+# been included.
+
+# build and install bazel, a more omplicated and error-prone make/ant/etc
+git clone https://github.com/bazelbuild/bazel.git
+cd bazel
+# somebody broke the build and owes the entire team lunch!
+# see https://github.com/tensorflow/tensorflow/issues/5143
+# and fuck you for not using one of the hundreds of build systems
+# available from the Debian repos.
+# reinvent the wheel much, Google?
+git checkout 0.3.2 
+# DO NOT EXECUTE SHIT IN /tmp!
+# The hell is wrong with you people?!? Use the working directory.
+mkdir $HOME/tmp
+TMPDIR=$HOME/tmp
+export TMPDIR
+./compile.sh 
+# try to ignore all the compiler warnings, I'm sure these guys know what 
+# they're doing despite ALL evidence to the contrary
+
+# okay, yet bazel finally built so install it in /usr/local/bin, and maybe
+# use at(1) to delete it tomorrow.
+sudo cp output/bazel /usr/local/bin/
+
+# tensorflow python dependencies
+sudo apt-get install python-numpy python-dev python-wheel
+
+# tensorflow!
+git clone https://github.com/tensorflow/tensorflow.git
+cd tensorflow
+./configure
+bazel build -c opt //tensorflow/tools/pip_package:build_pip_package
+# ignore more compiler warnings, because apparently nobody at google knows 
+# about -Werror
+
+# build a pip package for the python package manager that strangely is not
+# bundled with python
+bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+
+sudo pip install /tmp/tensorflow_pkg/tensorflow-*.whl
+
+# holy crap it finally finished... yet still this took less time than 
+# downloading a Docker image over satellite internet
